@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图片画廊 - 闲鱼图床</title>
+    <title>T-XY图床</title>
     <style>
         * {
             margin: 0;
@@ -12,97 +12,161 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: #ffffff;
             min-height: 100vh;
-            padding: 20px;
+            display: flex;
+            flex-direction: column;
         }
         
         .container {
+            flex: 1;
             max-width: 1200px;
+            width: 100%;
             margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         
+        /* 顶部区域 */
         .header {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            padding: 30px;
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 32px 48px;
         }
-        
+
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            color: #1a1a1a;
+            font-size: 1.5rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .upload-link {
+            color: #1a1a1a;
+            text-decoration: none;
+            padding: 10px 24px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 400;
         }
         
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1em;
+        .upload-link:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+        
+        /* 分割线 */
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 0;
+        }
+        
+        /* 内容区域 */
+        .content-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 48px;
         }
         
         .nav {
-            background: #f8f9fa;
-            padding: 20px;
-            border-bottom: 1px solid #dee2e6;
+            background: transparent;
+            padding: 0 0 24px 0;
+            border-bottom: none;
         }
         
         .nav-buttons {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
-            justify-content: center;
         }
         
         .nav-btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 25px;
-            background: #6c757d;
-            color: white;
+            padding: 8px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: #fafafa;
+            color: #6b7280;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+            font-weight: 400;
         }
         
         .nav-btn:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
+            background: #f3f4f6;
+            border-color: #d1d5db;
         }
         
         .nav-btn.active {
-            background: #007bff;
+            background: #1a1a1a;
+            color: white;
+            border-color: #1a1a1a;
         }
         
         .stats {
-            background: #e9ecef;
-            padding: 15px 30px;
+            background: transparent;
+            padding: 0 0 24px 0;
             display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 20px;
+            justify-content: flex-start;
+            gap: 32px;
+            border-bottom: none;
         }
         
         .stat-item {
-            text-align: center;
+            text-align: left;
         }
         
         .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #007bff;
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #1a1a1a;
         }
         
         .stat-label {
-            color: #6c757d;
-            font-size: 0.9em;
+            color: #6b7280;
+            font-size: 0.875rem;
+            font-weight: 400;
         }
         
         .content {
-            padding: 30px;
+            padding: 0;
+        }
+        
+        .search-box {
+            margin-bottom: 24px;
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 12px 48px 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+            background: #fafafa;
+        }
+        
+        .search-input:focus {
+            border-color: #d1d5db;
+            background: white;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 1.1rem;
         }
         
         .category-section {
@@ -110,48 +174,50 @@
         }
         
         .category-title {
-            font-size: 1.5em;
-            color: #333;
+            font-size: 1.125rem;
+            color: #1a1a1a;
             margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #007bff;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
             display: flex;
             align-items: center;
             gap: 10px;
+            font-weight: 500;
         }
         
         .category-count {
-            background: #007bff;
+            background: #1a1a1a;
             color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 400;
         }
         
         .gallery-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 20px;
         }
         
         .image-card {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             cursor: pointer;
+            border: 1px solid #e5e7eb;
         }
         
         .image-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
         
         .image-container {
             position: relative;
             width: 100%;
-            height: 200px;
+            height: 180px;
             overflow: hidden;
         }
         
@@ -163,7 +229,7 @@
         }
         
         .image-card:hover img {
-            transform: scale(1.05);
+            transform: scale(1.03);
         }
         
         .image-overlay {
@@ -191,41 +257,44 @@
         }
         
         .overlay-btn {
-            padding: 8px 12px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 5px;
-            background: rgba(255,255,255,0.2);
-            color: white;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.95);
+            color: #1a1a1a;
             cursor: pointer;
-            transition: background 0.3s ease;
+            transition: all 0.2s ease;
+            font-weight: 400;
+            font-size: 0.875rem;
         }
         
         .overlay-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: white;
         }
         
         .image-info {
-            padding: 15px;
+            padding: 16px;
         }
         
         .image-name {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
+            font-weight: 400;
+            color: #1a1a1a;
+            margin-bottom: 8px;
             word-break: break-all;
+            font-size: 0.875rem;
         }
         
         .image-meta {
-            font-size: 0.9em;
-            color: #6c757d;
+            font-size: 0.8rem;
+            color: #6b7280;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
         
         .image-time {
-            font-size: 0.8em;
-            color: #adb5bd;
+            font-size: 0.75rem;
+            color: #9ca3af;
         }
         
         .modal {
@@ -289,89 +358,150 @@
             color: #6c757d;
         }
         
-        .search-box {
-            margin-bottom: 20px;
-            position: relative;
+        /* 页脚 */
+        .footer {
+            padding: 32px 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #9ca3af;
+            font-size: 0.875rem;
+            border-top: 1px solid #e5e7eb;
         }
-        
-        .search-input {
-            width: 100%;
-            padding: 12px 40px 12px 15px;
-            border: 2px solid #dee2e6;
-            border-radius: 25px;
-            font-size: 16px;
-            outline: none;
-            transition: border-color 0.3s ease;
+
+        .footer-links {
+            display: flex;
+            gap: 16px;
+            align-items: center;
         }
-        
-        .search-input:focus {
-            border-color: #007bff;
+
+        .footer-icon {
+            font-size: 1.25rem;
+            color: #9ca3af;
+            text-decoration: none;
+            transition: color 0.2s ease;
         }
-        
-        .search-icon {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #6c757d;
+
+        .footer-icon:hover {
+            color: #1a1a1a;
+        }
+
+        .footer-icon:hover svg path {
+            fill: #1a1a1a;
+        }
+
+        .footer-icon:hover svg path[stroke] {
+            stroke: #1a1a1a;
+            fill: none;
+        }
+
+        .footer a {
+            color: #6b7280;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer a:hover {
+            color: #1a1a1a;
         }
         
         @media (max-width: 768px) {
             .gallery-grid {
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
                 gap: 15px;
             }
             
             .stats {
                 flex-direction: column;
-                gap: 10px;
+                gap: 16px;
             }
             
             .nav-buttons {
                 justify-content: flex-start;
+            }
+            
+            .header {
+                padding: 24px 20px;
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .content-section {
+                padding: 32px 20px;
+            }
+            
+            .footer {
+                padding: 24px 20px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- 顶部 -->
         <div class="header">
-            <h1>🖼️ 图片画廊</h1>
-            <p>浏览和管理您上传的所有图片</p>
+            <h1>T-XY图床</h1>
+            <a href="index.html" class="upload-link">上传图片</a>
         </div>
-        
-        <div class="nav">
-            <div class="nav-buttons">
-                <button class="nav-btn active" onclick="showCategory('all')">全部图片</button>
-                <button class="nav-btn" onclick="showCategory('二次元壁纸')">二次元壁纸</button>
-                <button class="nav-btn" onclick="showCategory('教程')">教程</button>
-                <button class="nav-btn" onclick="showCategory('日常')">日常</button>
-                <button class="nav-btn" onclick="refreshGallery()">🔄 刷新</button>
-                <button class="nav-btn" onclick="exportData()">📥 导出数据</button>
-                <button class="nav-btn" onclick="window.location.href='index.html'">📤 上传图片</button>
-            </div>
-        </div>
-        
-        <div class="stats" id="stats">
-            <div class="stat-item">
-                <div class="stat-number" id="totalCount">0</div>
-                <div class="stat-label">总图片数</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number" id="categoryCount">0</div>
-                <div class="stat-label">分类数</div>
-            </div>
-        </div>
-        
-        <div class="content">
-            <div class="search-box">
-                <input type="text" class="search-input" id="searchInput" placeholder="搜索图片名称...">
-                <span class="search-icon">🔍</span>
+
+        <!-- 分割线 -->
+        <div class="divider"></div>
+
+        <!-- 内容区域 -->
+        <div class="content-section">
+            <div class="nav">
+                <div class="nav-buttons">
+                    <button class="nav-btn active" onclick="showCategory('all')">全部图片</button>
+                    <button class="nav-btn" onclick="showCategory('二次元壁纸')">二次元壁纸</button>
+                    <button class="nav-btn" onclick="showCategory('教程')">教程</button>
+                    <button class="nav-btn" onclick="showCategory('日常')">日常</button>
+                    <button class="nav-btn" onclick="refreshGallery()">刷新</button>
+                    <button class="nav-btn" onclick="exportData()">导出数据</button>
+                </div>
             </div>
             
-            <div id="galleryContent">
-                <div class="loading">正在加载图片...</div>
+            <div class="stats" id="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalCount">0</div>
+                    <div class="stat-label">总图片数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="categoryCount">0</div>
+                    <div class="stat-label">分类数</div>
+                </div>
             </div>
+            
+            <div class="content">
+                <div class="search-box">
+                    <input type="text" class="search-input" id="searchInput" placeholder="搜索图片名称...">
+                    <span class="search-icon">🔍</span>
+                </div>
+                
+                <div id="galleryContent">
+                    <div class="loading">正在加载图片...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分割线 -->
+        <div class="divider"></div>
+
+        <!-- 页脚 -->
+        <div class="footer">
+            <div class="footer-links">
+                <a href="https://github.com/Tavre/goofish_img" target="_blank" class="footer-icon" title="GitHub">
+                    <svg t="1760724019753" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1196" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20"><path d="M64 512c0 195.2 124.8 361.6 300.8 422.4 22.4 6.4 19.2-9.6 19.2-22.4v-76.8c-134.4 16-140.8-73.6-150.4-89.6-19.2-32-60.8-38.4-48-54.4 32-16 64 3.2 99.2 57.6 25.6 38.4 76.8 32 105.6 25.6 6.4-22.4 19.2-44.8 35.2-60.8-144-22.4-201.6-108.8-201.6-211.2 0-48 16-96 48-131.2-22.4-60.8 0-115.2 3.2-121.6 57.6-6.4 118.4 41.6 124.8 44.8 32-9.6 70.4-12.8 112-12.8 41.6 0 80 6.4 112 12.8 12.8-9.6 67.2-48 121.6-44.8 3.2 6.4 25.6 57.6 6.4 118.4 32 38.4 48 83.2 48 131.2 0 102.4-57.6 188.8-201.6 214.4 22.4 22.4 38.4 54.4 38.4 92.8v112c0 9.6 0 19.2 16 19.2C832 876.8 960 710.4 960 512c0-246.4-201.6-448-448-448S64 265.6 64 512z" fill="#9CA3AF" p-id="1197"></path></svg>
+                </a>
+                <a href="https://space.bilibili.com/628475090" target="_blank" class="footer-icon" title="Bilibili">
+                    <svg t="1760724034324" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1345" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20"><path d="M977.2 208.2c33.4 36.2 48.8 79.4 46.6 131.4v404.8c-0.8 52.8-18.4 96.2-53 130.2-34.4 34-78.2 51.8-131 53.4H184.04c-52.9-1.6-96.42-19.6-130.56-54.4C19.364 838.8 1.534 793 0 736.4V339.6c1.534-52 19.364-95.2 53.48-131.4C87.62 175.5 131.14 157.54 184.04 156h58.76L192.1 104.38c-11.5-11.46-17.26-26-17.26-43.58 0-17.6 5.76-32.12 17.26-43.594C203.6 5.736 218.2 0 235.8 0s32.2 5.736 43.8 17.206L426.2 156h176l149-138.794C763.4 5.736 778.4 0 796 0c17.6 0 32.2 5.736 43.8 17.206 11.4 11.474 17.2 25.994 17.2 43.594 0 17.58-5.8 32.12-17.2 43.58L789.2 156h58.6c52.8 1.54 96 19.5 129.4 52.2z m-77.6 139.4c-0.8-19.2-7.4-34.8-21.4-47-10.4-12.2-28-18.8-45.4-19.6H192.1c-19.18 0.8-34.9 7.4-47.16 19.6-12.28 12.2-18.8 27.8-19.56 47v388.8c0 18.4 6.52 34 19.56 47s28.76 19.6 47.16 19.6H832.8c18.4 0 34-6.6 46.6-19.6 12.6-13 19.4-28.6 20.2-47V347.6z m-528.6 85.4c12.6 12.6 19.4 28.2 20.2 46.4V546c-0.8 18.4-7.4 33.8-19.6 46.4-12.4 12.6-28 19-47.2 19-19.2 0-35-6.4-47.2-19-12.2-12.6-18.8-28-19.6-46.4v-66.6c0.8-18.2 7.6-33.8 20.2-46.4 12.6-12.6 26.4-19.2 46.6-20 18.4 0.8 34 7.4 46.6 20z m383 0c12.6 12.6 19.4 28.2 20.2 46.4V546c-0.8 18.4-7.4 33.8-19.6 46.4-12.2 12.6-28 19-47.2 19-19.2 0-34.8-6.4-47.2-19-14-12.6-18.8-28-19.4-46.4v-66.6c0.6-18.2 7.4-33.8 20-46.4 12.6-12.6 28.2-19.2 46.6-20 18.4 0.8 34 7.4 46.6 20z" fill="#9CA3AF" p-id="1346"></path></svg>
+                </a>
+            </div>
+            <p>基于闲鱼 API 的图片存储服务</p>
         </div>
     </div>
     
@@ -591,11 +721,72 @@
         
         // 复制链接
         function copyUrl(url) {
-            navigator.clipboard.writeText(url).then(() => {
-                alert('链接已复制到剪贴板');
-            }).catch(() => {
-                prompt('请手动复制链接：', url);
-            });
+            // 使用现代 Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showCopySuccess('链接已复制到剪贴板');
+                }).catch(() => {
+                    // 降级到传统方法
+                    fallbackCopyTextToClipboard(url);
+                });
+            } else {
+                // 降级到传统方法
+                fallbackCopyTextToClipboard(url);
+            }
+        }
+        
+        // 降级复制方法
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess('链接已复制到剪贴板');
+            } catch (err) {
+                // 如果都失败了，提示用户手动复制
+                prompt('复制失败，请手动复制链接：', text);
+            }
+            document.body.removeChild(textArea);
+        }
+        
+        // 显示复制成功提示
+        function showCopySuccess(message) {
+            // 创建提示元素
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = '#1a1a1a';
+            toast.style.color = 'white';
+            toast.style.padding = '12px 24px';
+            toast.style.borderRadius = '6px';
+            toast.style.zIndex = '9999';
+            toast.style.fontSize = '14px';
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            
+            document.body.appendChild(toast);
+            
+            // 渐显
+            setTimeout(() => {
+                toast.style.opacity = '1';
+            }, 10);
+            
+            // 3秒后移除
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 3000);
         }
         
         // 下载图片
