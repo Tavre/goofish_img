@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>T-XY图床</title>
+    <title>T-XY图床 - 基于闲鱼API的图片存储服务</title>
     <style>
         * {
             margin: 0;
@@ -511,6 +511,20 @@
                 </div>
             </div>
 
+            <div class="category-selector">
+                <h3>上传平台</h3>
+                <div class="category-options">
+                    <label class="category-option">
+                        <input type="radio" name="platform" value="goofish" checked>
+                        <span class="category-label">闲鱼</span>
+                    </label>
+                    <label class="category-option">
+                        <input type="radio" name="platform" value="baidu">
+                        <span class="category-label">百度贴吧</span>
+                    </label>
+                </div>
+            </div>
+
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📎</div>
                 <div class="upload-text">点击或拖拽上传图片</div>
@@ -519,6 +533,8 @@
             </div>
 
             <input type="file" id="fileInput" accept="image/*" multiple>
+            
+            <button id="uploadBtn" class="btn">选择图片</button>
             
             <div class="progress" id="progress">
                 <div class="progress-bar" id="progressBar"></div>
@@ -559,6 +575,9 @@
 
         // 点击上传区域选择文件
         uploadArea.addEventListener('click', selectFile);
+
+        // 点击上传按钮选择文件
+        uploadBtn.addEventListener('click', selectFile);
 
         // 拖拽上传
         uploadArea.addEventListener('dragover', (e) => {
@@ -646,6 +665,10 @@
             const selectedFormat = document.querySelector('input[name="format"]:checked').value;
             formData.append('format', selectedFormat);
 
+            // 获取选中的平台
+            const selectedPlatform = document.querySelector('input[name="platform"]:checked').value;
+            formData.append('platform', selectedPlatform);
+
             // 显示进度条
             progress.style.display = 'block';
             uploadBtn.disabled = true;
@@ -678,6 +701,11 @@
                                 showResult('success', '上传成功！', response.data);
                             } else {
                                 showMultipleResults(response);
+                            }
+                                                
+                            // 如果响应中包含画廊数据，保存到本地存储以便画廊页面使用
+                            if (response.gallery) {
+                                localStorage.setItem('galleryData', JSON.stringify(response.gallery));
                             }
                         } else {
                             showResult('error', '上传失败', response.message || '未知错误');

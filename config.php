@@ -4,12 +4,34 @@
  * 
  * 使用说明：
  * 1. 修改 COOKIE2_VALUE 为你的闲鱼 cookie2 值
- * 2. 可以根据需要调整其他配置项
+ * 2. 修改 BAIDU_COOKIE 为你的百度贴吧 cookie 值（可选，用于百度上传功能）
+ * 3. 可以根据需要调整其他配置项
+ * 
+ * 获取闲鱼 cookie2 值的方法：
+ * 1. 访问 https://author.goofish.com/#/
+ * 2. 按F12打开开发者工具
+ * 3. 刷新页面，在网络选项卡中找到请求
+ * 4. 查看请求头中的 cookie 字段，复制 cookie2 的值
+ * 
+ * 获取百度贴吧 cookie 值的方法：
+ * 1. 访问 https://tieba.baidu.com/
+ * 2. 登录你的百度账号
+ * 3. 按F12打开开发者工具
+ * 4. 刷新页面，在网络选项卡中找到请求
+ * 5. 查看请求头中的 cookie 字段，复制整个 cookie 值
+ * 
+ * 注意：
+ * - 百度上传功能需要有效的百度账号cookie才能使用
+ * - cookie可能会过期，如果上传失败请重新获取新的cookie
+ * - 请妥善保管你的cookie信息，不要泄露给他人
  */
 
 // 闲鱼API配置
 define('GOOFISH_UPLOAD_URL', 'https://stream-upload.goofish.com/api/upload.api');
 define('COOKIE2_VALUE', ''); // 请替换为你的cookie2值 通过https://author.goofish.com/#/获取
+
+// 百度贴吧API配置
+define('BAIDU_COOKIE', ''); // 请替换为你的百度贴吧cookie值 用于百度上传功能（可选）
 
 // 上传限制配置
 define('MAX_FILE_SIZE', 50 * 1024 * 1024); // 最大文件大小 50MB

@@ -528,6 +528,20 @@
         // 加载画廊数据
         async function loadGallery() {
             try {
+                // 首先检查本地存储中是否有最新的画廊数据
+                const localGalleryData = localStorage.getItem('galleryData');
+                if (localGalleryData) {
+                    galleryData = JSON.parse(localGalleryData);
+                    filteredData = galleryData;
+                    updateStats();
+                    renderGallery();
+                    
+                    // 清除本地存储中的数据
+                    localStorage.removeItem('galleryData');
+                    return;
+                }
+                
+                // 如果本地存储中没有数据，则从服务器获取
                 const response = await fetch('gallery.json');
                 if (!response.ok) {
                     throw new Error('无法加载画廊数据');

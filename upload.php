@@ -2,6 +2,9 @@
 // 开启输出缓冲，确保只输出JSON响应
 ob_start();
 
+// 引入百度上传类
+require_once 'BaiduImageUploader.php';
+
 // 必须在任何其他代码之前设置PHP上传限制
 ini_set('post_max_size', '50M');
 ini_set('upload_max_filesize', '50M');
@@ -135,6 +138,12 @@ try {
     if (!in_array($format, ['original', 'webp', 'avif'])) {
         $format = 'original';
     }
+    
+    // 获取上传平台选项
+    $platform = isset($_POST['platform']) ? trim($_POST['platform']) : 'goofish';
+    if (!in_array($platform, ['goofish', 'baidu'])) {
+        $platform = 'goofish';
+    }
 
     $files = $_FILES['files'];
     $uploadResults = [];
@@ -230,8 +239,14 @@ for ($i = 0; $i < count($files['name']); $i++) {
         logMessage("文件上传开始: {$file['name']}, 大小: " . formatFileSize($file['size']) . ", IP: {$_SERVER['REMOTE_ADDR']}");
     }
     
-    // 上传文件到闲鱼
-    $result = uploadToGoofish($file);
+    // 根据选择的平台上传文件
+    if ($platform === 'baidu') {
+        // 上传到百度贴吧
+        $result = uploadToBaidu($file);
+    } else {
+        // 上传到闲鱼
+        $result = uploadToGoofish($file);
+    }
     
     if ($result['success']) {
         // 保存到缓存
@@ -245,6 +260,15 @@ for ($i = 0; $i < count($files['name']); $i++) {
             logMessage("文件上传成功: {$result['data']['fileName']}, 结果: " . json_encode($result, JSON_UNESCAPED_UNICODE));
         }
         
+        // 重新读取画廊数据并添加到结果中
+        $galleryData = [];
+        if (file_exists('gallery.json')) {
+            $galleryContent = file_get_contents('gallery.json');
+            $galleryData = json_decode($galleryContent, true) ?: [];
+        }
+        
+        // 更新结果中的画廊数据
+        $result['gallery'] = $galleryData;
         $uploadResults[] = $result;
     } else {
         if (ENABLE_LOGGING) {
@@ -264,15 +288,17 @@ for ($i = 0; $i < count($files['name']); $i++) {
         ob_clean();
     }
     
+    // 获取最新的画廊数据
+    $galleryData = [];
+    if (file_exists('gallery.json')) {
+        $galleryContent = file_get_contents('gallery.json');
+        $galleryData = json_decode($galleryContent, true) ?: [];
+    }
+    
     // 返回上传结果
     if (count($uploadResults) === 1) {
         // 单文件上传，返回简化格式，并附带最新gallery.json内容
         $result = $uploadResults[0];
-        $galleryData = [];
-        if (file_exists('gallery.json')) {
-            $galleryContent = file_get_contents('gallery.json');
-            $galleryData = json_decode($galleryContent, true) ?: [];
-        }
         if ($result['success']) {
             echo json_encode([
                 'success' => true,
@@ -289,11 +315,6 @@ for ($i = 0; $i < count($files['name']); $i++) {
         }
     } else {
         // 多文件上传，返回详细格式，并附带最新gallery.json内容
-        $galleryData = [];
-        if (file_exists('gallery.json')) {
-            $galleryContent = file_get_contents('gallery.json');
-            $galleryData = json_decode($galleryContent, true) ?: [];
-        }
         echo json_encode([
             'success' => true,
             'results' => $uploadResults,
@@ -462,6 +483,71 @@ function uploadToGoofish($file) {
             'success' => false,
             'message' => getErrorMessage('format_error'),
             'response' => $responseData
+        ];
+    }
+}
+
+/**
+ * 上传文件到百度贴吧
+ * @param array $file 文件信息
+ * @return array 上传结果
+ */
+function uploadToBaidu($file) {
+    try {
+        // 创建百度上传实例
+        $uploader = new BaiduImageUploader();
+        
+        // 设置cookie（从配置中获取，如果有的话）
+        if (defined('BAIDU_COOKIE') && !empty(BAIDU_COOKIE)) {
+            $uploader->setCookie(BAIDU_COOKIE);
+        }
+        
+        // 使用临时文件进行上传
+        $tempFile = $file['tmp_name'];
+        $fileName = $file['name'];
+        
+        // 执行上传
+        $result = $uploader->uploadImage($tempFile, $fileName);
+        
+        // 检查上传结果
+        if ($result['success']) {
+            // 获取图片URL
+            $imageUrl = $uploader->getImageUrl($result);
+            
+            if ($imageUrl) {
+                // 格式化文件大小
+                $sizeFormatted = formatFileSize($file['size']);
+                
+                return [
+                    'success' => true,
+                    'message' => '上传成功',
+                    'data' => [
+                        'url' => $imageUrl,
+                        'fileName' => pathinfo($fileName, PATHINFO_FILENAME),
+                        'size' => $sizeFormatted,
+                        'pix' => '未知', // 百度API不返回图片尺寸信息
+                        'fileId' => '', // 百度API不返回文件ID
+                        'quality' => 100
+                    ]
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => '无法从响应中提取图片URL',
+                    'response' => $result
+                ];
+            }
+        } else {
+            return [
+                'success' => false,
+                'message' => '上传失败: ' . ($result['error'] ?? '未知错误'),
+                'response' => $result
+            ];
+        }
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => '上传过程中发生异常: ' . $e->getMessage()
         ];
     }
 }
@@ -667,7 +753,12 @@ function saveToGallery($data, $category = '未分类') {
     }
     
     // 保存到文件
-    file_put_contents($galleryFile, json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    $result = file_put_contents($galleryFile, json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    
+    // 检查是否成功写入
+    if ($result === false) {
+        error_log("无法写入画廊文件: $galleryFile");
+    }
 }
 
 /**
