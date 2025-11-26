@@ -2,7 +2,14 @@
 
 一个收集各大厂的图片接口的图床 使用全球加速的cdn 让您的图片快人一步加载！
 
+
+
+图床失效检测：[图床测试 - Tavre Blog](https://blog.tavr.top/posts/imgtest/)
+
+部分图床有防盗链 博客中有解决教程
+
 # 图床提供商
+
 1.闲鱼
 2.百度贴吧
 3.葫芦侠
@@ -15,7 +22,7 @@
 
 ![](https://img.alicdn.com/imgextra/i2/O1CN01WTrqLZ1kxYPVvoWys_!!2215879134750-2-fleamarket.png)
 
-百度图床api有bug 请等待修复
+百度图床api有防盗链 不建议使用
 
 # 协议支持
 
