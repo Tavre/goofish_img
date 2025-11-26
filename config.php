@@ -33,11 +33,18 @@ define('COOKIE2_VALUE', ''); // 请替换为你的cookie2值 通过https://autho
 // 百度贴吧API配置
 define('BAIDU_COOKIE', ''); // 请替换为你的百度贴吧cookie值 用于百度上传功能（可选）
 
+// 葫芦侠API配置
+define('HULUXIA_PHONE', ''); // 请替换为你的葫芦侠手机号
+define('HULUXIA_PASSWORD', ''); // 请替换为你的葫芦侠密码
+define('HULUXIA_KEY', ''); // 请替换为你的葫芦侠key 一般来讲无需填写 填完手机号和密码后 手动访问 hulu/task.php的文件即可
+define('HULUXIA_UID', ''); // 请替换为你的葫芦侠uid 一般来讲无需填写 填完手机号和密码后 手动访问 hulu/task.php的文件即可
+
+
 // 上传限制配置
 define('MAX_FILE_SIZE', 50 * 1024 * 1024); // 最大文件大小 50MB
 define('ALLOWED_TYPES', [
     'image/jpeg',
-    'image/png', 
+    'image/png',
     'image/gif',
     'image/webp',
     'image/jpg'
@@ -75,18 +82,21 @@ define('ERROR_MESSAGES', [
 ]);
 
 // 获取配置函数
-function getConfig($key, $default = null) {
+function getConfig($key, $default = null)
+{
     return defined($key) ? constant($key) : $default;
 }
 
 // 获取错误信息
-function getErrorMessage($key) {
+function getErrorMessage($key)
+{
     $messages = ERROR_MESSAGES;
     return isset($messages[$key]) ? $messages[$key] : '未知错误';
 }
 
 // 检查目录是否存在，不存在则创建
-function ensureDirectoryExists($dir) {
+function ensureDirectoryExists($dir)
+{
     if (!is_dir($dir)) {
         mkdir($dir, 0755, true);
     }

@@ -4,6 +4,7 @@ ob_start();
 
 // 引入百度上传类
 require_once 'BaiduImageUploader.php';
+require_once 'HuluxiaImageUploader.php';
 
 // 必须在任何其他代码之前设置PHP上传限制
 ini_set('post_max_size', '50M');
@@ -33,10 +34,10 @@ ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 // 设置错误处理函数
-set_error_handler(function($severity, $message, $file, $line) {
+set_error_handler(function ($severity, $message, $file, $line) {
     $errorMsg = "PHP Error: [$severity] $message in $file on line $line";
     error_log($errorMsg);
-    
+
     // 如果是致命错误，返回JSON错误响应
     if ($severity === E_ERROR || $severity === E_PARSE || $severity === E_CORE_ERROR) {
         // 清理输出缓冲区
@@ -55,10 +56,10 @@ set_error_handler(function($severity, $message, $file, $line) {
 });
 
 // 设置异常处理函数
-set_exception_handler(function($exception) {
+set_exception_handler(function ($exception) {
     $errorMsg = "Uncaught Exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine();
     error_log($errorMsg);
-    
+
     // 清理输出缓冲区
     if (ob_get_level()) {
         ob_clean();
@@ -138,163 +139,166 @@ try {
     if (!in_array($format, ['original', 'webp', 'avif'])) {
         $format = 'original';
     }
-    
+
     // 获取上传平台选项
     $platform = isset($_POST['platform']) ? trim($_POST['platform']) : 'goofish';
-    if (!in_array($platform, ['goofish', 'baidu'])) {
+    if (!in_array($platform, ['goofish', 'baidu', 'huluxia'])) {
         $platform = 'goofish';
     }
 
     $files = $_FILES['files'];
     $uploadResults = [];
 
-// 处理多个文件
-for ($i = 0; $i < count($files['name']); $i++) {
-    if ($files['error'][$i] !== UPLOAD_ERR_OK) {
-        $uploadResults[] = [
-            'success' => false,
-            'fileName' => $files['name'][$i],
-            'message' => '文件上传错误'
+    // 处理多个文件
+    for ($i = 0; $i < count($files['name']); $i++) {
+        if ($files['error'][$i] !== UPLOAD_ERR_OK) {
+            $uploadResults[] = [
+                'success' => false,
+                'fileName' => $files['name'][$i],
+                'message' => '文件上传错误'
+            ];
+            continue;
+        }
+
+        $file = [
+            'name' => $files['name'][$i],
+            'type' => $files['type'][$i],
+            'tmp_name' => $files['tmp_name'][$i],
+            'size' => $files['size'][$i]
         ];
-        continue;
-    }
-    
-    $file = [
-        'name' => $files['name'][$i],
-        'type' => $files['type'][$i],
-        'tmp_name' => $files['tmp_name'][$i],
-        'size' => $files['size'][$i]
-    ];
-    
-    // 验证文件类型
-    if (!in_array($file['type'], ALLOWED_TYPES)) {
-        $uploadResults[] = [
-            'success' => false,
-            'fileName' => $file['name'],
-            'message' => getErrorMessage('invalid_type')
-        ];
-        continue;
-    }
-    
-    // 验证文件大小
-    if ($file['size'] > MAX_FILE_SIZE) {
-        $uploadResults[] = [
-            'success' => false,
-            'fileName' => $file['name'],
-            'message' => getErrorMessage('file_too_large')
-        ];
-        continue;
-    }
-    
-    // 自动重命名文件
-    $file['name'] = generateNewFileName($file['name']);
-    
-    // 图片压缩处理 - 当文件大小超过8MB时自动压缩
-    if ($file['size'] > 8 * 1024 * 1024) {
-        $compressResult = compressImage($file, 8 * 1024 * 1024);
-        if ($compressResult['success']) {
-            $file = $compressResult['file'];
-            if (ENABLE_LOGGING) {
-                logMessage("图片压缩完成: {$file['name']}, 原大小: " . formatFileSize($compressResult['originalSize']) . ", 压缩后: " . formatFileSize($file['size']));
+
+        // 验证文件类型
+        if (!in_array($file['type'], ALLOWED_TYPES)) {
+            $uploadResults[] = [
+                'success' => false,
+                'fileName' => $file['name'],
+                'message' => getErrorMessage('invalid_type')
+            ];
+            continue;
+        }
+
+        // 验证文件大小
+        if ($file['size'] > MAX_FILE_SIZE) {
+            $uploadResults[] = [
+                'success' => false,
+                'fileName' => $file['name'],
+                'message' => getErrorMessage('file_too_large')
+            ];
+            continue;
+        }
+
+        // 自动重命名文件
+        $file['name'] = generateNewFileName($file['name']);
+
+        // 图片压缩处理 - 当文件大小超过8MB时自动压缩
+        if ($file['size'] > 8 * 1024 * 1024) {
+            $compressResult = compressImage($file, 8 * 1024 * 1024);
+            if ($compressResult['success']) {
+                $file = $compressResult['file'];
+                if (ENABLE_LOGGING) {
+                    logMessage("图片压缩完成: {$file['name']}, 原大小: " . formatFileSize($compressResult['originalSize']) . ", 压缩后: " . formatFileSize($file['size']));
+                }
+            } else {
+                $uploadResults[] = [
+                    'success' => false,
+                    'fileName' => $file['name'],
+                    'message' => $compressResult['message']
+                ];
+                continue;
             }
-        } else {
+        }
+
+        // 格式转换处理
+        if ($format !== 'original') {
+            $convertResult = convertImageFormat($file, $format);
+            if ($convertResult['success']) {
+                $file = $convertResult['file'];
+            } else {
+                $uploadResults[] = [
+                    'success' => false,
+                    'fileName' => $file['name'],
+                    'message' => $convertResult['message']
+                ];
+                continue;
+            }
+        }
+
+        // 检查缓存
+        $fileHash = getFileHash($file['tmp_name']);
+        $cachedResult = getCachedResult($fileHash);
+        if ($cachedResult) {
             $uploadResults[] = [
-                'success' => false,
-                'fileName' => $file['name'],
-                'message' => $compressResult['message']
+                'success' => true,
+                'data' => $cachedResult,
+                'cached' => true
             ];
             continue;
         }
-    }
-    
-    // 格式转换处理
-    if ($format !== 'original') {
-        $convertResult = convertImageFormat($file, $format);
-        if ($convertResult['success']) {
-            $file = $convertResult['file'];
+
+        // 记录上传日志
+        if (ENABLE_LOGGING) {
+            logMessage("文件上传开始: {$file['name']}, 大小: " . formatFileSize($file['size']) . ", IP: {$_SERVER['REMOTE_ADDR']}");
+        }
+
+        // 根据选择的平台上传文件
+        if ($platform === 'baidu') {
+            // 上传到百度贴吧
+            $result = uploadToBaidu($file);
+        } elseif ($platform === 'huluxia') {
+            // 上传到葫芦侠
+            $result = uploadToHuluxia($file);
         } else {
+            // 上传到闲鱼
+            $result = uploadToGoofish($file);
+        }
+
+        if ($result['success']) {
+            // 保存到缓存
+            saveCachedResult($fileHash, $result['data']);
+
+            // 保存到画廊JSON
+            saveToGallery($result['data'], $category);
+
+            // 记录日志
+            if (ENABLE_LOGGING) {
+                logMessage("文件上传成功: {$result['data']['fileName']}, 结果: " . json_encode($result, JSON_UNESCAPED_UNICODE));
+            }
+
+            // 重新读取画廊数据并添加到结果中
+            $galleryData = [];
+            if (file_exists('gallery.json')) {
+                $galleryContent = file_get_contents('gallery.json');
+                $galleryData = json_decode($galleryContent, true) ?: [];
+            }
+
+            // 更新结果中的画廊数据
+            $result['gallery'] = $galleryData;
+            $uploadResults[] = $result;
+        } else {
+            if (ENABLE_LOGGING) {
+                logMessage("文件上传失败: {$file['name']}, 错误: {$result['message']}");
+            }
+
             $uploadResults[] = [
                 'success' => false,
                 'fileName' => $file['name'],
-                'message' => $convertResult['message']
+                'message' => $result['message']
             ];
-            continue;
         }
     }
-    
-    // 检查缓存
-    $fileHash = getFileHash($file['tmp_name']);
-    $cachedResult = getCachedResult($fileHash);
-    if ($cachedResult) {
-        $uploadResults[] = [
-            'success' => true,
-            'data' => $cachedResult,
-            'cached' => true
-        ];
-        continue;
-    }
-    
-    // 记录上传日志
-    if (ENABLE_LOGGING) {
-        logMessage("文件上传开始: {$file['name']}, 大小: " . formatFileSize($file['size']) . ", IP: {$_SERVER['REMOTE_ADDR']}");
-    }
-    
-    // 根据选择的平台上传文件
-    if ($platform === 'baidu') {
-        // 上传到百度贴吧
-        $result = uploadToBaidu($file);
-    } else {
-        // 上传到闲鱼
-        $result = uploadToGoofish($file);
-    }
-    
-    if ($result['success']) {
-        // 保存到缓存
-        saveCachedResult($fileHash, $result['data']);
-        
-        // 保存到画廊JSON
-        saveToGallery($result['data'], $category);
-        
-        // 记录日志
-        if (ENABLE_LOGGING) {
-            logMessage("文件上传成功: {$result['data']['fileName']}, 结果: " . json_encode($result, JSON_UNESCAPED_UNICODE));
-        }
-        
-        // 重新读取画廊数据并添加到结果中
-        $galleryData = [];
-        if (file_exists('gallery.json')) {
-            $galleryContent = file_get_contents('gallery.json');
-            $galleryData = json_decode($galleryContent, true) ?: [];
-        }
-        
-        // 更新结果中的画廊数据
-        $result['gallery'] = $galleryData;
-        $uploadResults[] = $result;
-    } else {
-        if (ENABLE_LOGGING) {
-            logMessage("文件上传失败: {$file['name']}, 错误: {$result['message']}");
-        }
-        
-        $uploadResults[] = [
-            'success' => false,
-            'fileName' => $file['name'],
-            'message' => $result['message']
-        ];
-    }
-}
 
     // 清理输出缓冲区，确保只输出JSON响应
     if (ob_get_level()) {
         ob_clean();
     }
-    
+
     // 获取最新的画廊数据
     $galleryData = [];
     if (file_exists('gallery.json')) {
         $galleryContent = file_get_contents('gallery.json');
         $galleryData = json_decode($galleryContent, true) ?: [];
     }
-    
+
     // 返回上传结果
     if (count($uploadResults) === 1) {
         // 单文件上传，返回简化格式，并附带最新gallery.json内容
@@ -319,7 +323,9 @@ for ($i = 0; $i < count($files['name']); $i++) {
             'success' => true,
             'results' => $uploadResults,
             'total' => count($uploadResults),
-            'successful' => count(array_filter($uploadResults, function($r) { return $r['success']; })),
+            'successful' => count(array_filter($uploadResults, function ($r) {
+                return $r['success'];
+            })),
             'gallery' => $galleryData
         ], JSON_UNESCAPED_UNICODE);
     }
@@ -328,16 +334,16 @@ for ($i = 0; $i < count($files['name']); $i++) {
     // 捕获所有异常并返回标准错误响应
     $errorMsg = "Upload processing error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine();
     error_log($errorMsg);
-    
+
     // 清理输出缓冲区
     if (ob_get_level()) {
         ob_clean();
     }
-    
+
     if (!headers_sent()) {
         header('Content-Type: application/json; charset=utf-8');
     }
-    
+
     echo json_encode([
         'success' => false,
         'message' => '文件处理过程中发生错误，请稍后重试'
@@ -347,16 +353,16 @@ for ($i = 0; $i < count($files['name']); $i++) {
     // 捕获PHP 7+ 的Error类型错误
     $errorMsg = "Upload processing fatal error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine();
     error_log($errorMsg);
-    
+
     // 清理输出缓冲区
     if (ob_get_level()) {
         ob_clean();
     }
-    
+
     if (!headers_sent()) {
         header('Content-Type: application/json; charset=utf-8');
     }
-    
+
     echo json_encode([
         'success' => false,
         'message' => '服务器内部错误，请稍后重试'
@@ -369,18 +375,19 @@ for ($i = 0; $i < count($files['name']); $i++) {
  * @param array $file 文件信息
  * @return array 上传结果
  */
-function uploadToGoofish($file) {
+function uploadToGoofish($file)
+{
     // 准备上传数据
     $boundary = '----WebKitFormBoundary' . uniqid();
     $postData = '';
-    
+
     // 添加文件数据
     $postData .= "--{$boundary}\r\n";
     $postData .= 'Content-Disposition: form-data; name="file"; filename="' . basename($file['name']) . '"' . "\r\n";
     $postData .= 'Content-Type: ' . $file['type'] . "\r\n\r\n";
     $postData .= file_get_contents($file['tmp_name']);
     $postData .= "\r\n--{$boundary}--\r\n";
-    
+
     // 准备请求头
     $headers = [
         'Content-Type: multipart/form-data; boundary=' . $boundary,
@@ -392,7 +399,7 @@ function uploadToGoofish($file) {
         'Cookie: cookie2=' . COOKIE2_VALUE,
         'Content-Length: ' . strlen($postData)
     ];
-    
+
     // 发送请求到闲鱼API
     $ch = curl_init();
     curl_setopt_array($ch, [
@@ -407,12 +414,12 @@ function uploadToGoofish($file) {
         CURLOPT_TIMEOUT => 30,
         CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36'
     ]);
-    
+
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
     curl_close($ch);
-    
+
     // 检查请求是否成功
     if ($error) {
         return [
@@ -420,7 +427,7 @@ function uploadToGoofish($file) {
             'message' => getErrorMessage('curl_error') . ': ' . $error
         ];
     }
-    
+
     if ($httpCode !== 200) {
         return [
             'success' => false,
@@ -428,10 +435,10 @@ function uploadToGoofish($file) {
             'response' => $response
         ];
     }
-    
+
     // 解析响应
     $responseData = json_decode($response, true);
-    
+
     if (!$responseData) {
         return [
             'success' => false,
@@ -439,7 +446,7 @@ function uploadToGoofish($file) {
             'response' => $response
         ];
     }
-    
+
     // 检查闲鱼API响应
     if (!isset($responseData['success']) || $responseData['success'] !== true) {
         return [
@@ -448,11 +455,11 @@ function uploadToGoofish($file) {
             'response' => $responseData
         ];
     }
-    
+
     // 提取上传结果
     if (isset($responseData['object']) && is_array($responseData['object'])) {
         $object = $responseData['object'];
-        
+
         // 确保必要字段存在
         if (!isset($object['url'])) {
             return [
@@ -461,11 +468,11 @@ function uploadToGoofish($file) {
                 'response' => $responseData
             ];
         }
-        
+
         // 格式化文件大小
         $size = isset($object['size']) ? intval($object['size']) : $file['size'];
         $sizeFormatted = formatFileSize($size);
-        
+
         return [
             'success' => true,
             'message' => '上传成功',
@@ -492,32 +499,33 @@ function uploadToGoofish($file) {
  * @param array $file 文件信息
  * @return array 上传结果
  */
-function uploadToBaidu($file) {
+function uploadToBaidu($file)
+{
     try {
         // 创建百度上传实例
         $uploader = new BaiduImageUploader();
-        
+
         // 设置cookie（从配置中获取，如果有的话）
         if (defined('BAIDU_COOKIE') && !empty(BAIDU_COOKIE)) {
             $uploader->setCookie(BAIDU_COOKIE);
         }
-        
+
         // 使用临时文件进行上传
         $tempFile = $file['tmp_name'];
         $fileName = $file['name'];
-        
+
         // 执行上传
         $result = $uploader->uploadImage($tempFile, $fileName);
-        
+
         // 检查上传结果
         if ($result['success']) {
             // 获取图片URL
             $imageUrl = $uploader->getImageUrl($result);
-            
+
             if ($imageUrl) {
                 // 格式化文件大小
                 $sizeFormatted = formatFileSize($file['size']);
-                
+
                 return [
                     'success' => true,
                     'message' => '上传成功',
@@ -544,6 +552,27 @@ function uploadToBaidu($file) {
                 'response' => $result
             ];
         }
+
+
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => '上传过程中发生异常: ' . $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * 上传文件到葫芦侠
+ * @param array $file 文件信息
+ * @return array 上传结果
+ */
+function uploadToHuluxia($file)
+{
+    try {
+        $uploader = new HuluxiaImageUploader();
+        $result = $uploader->uploadImage($file);
+        return $result;
     } catch (Exception $e) {
         return [
             'success' => false,
@@ -556,12 +585,13 @@ function uploadToBaidu($file) {
  * 返回错误响应并退出
  * @param string $message 错误消息
  */
-function respondWithError($message) {
+function respondWithError($message)
+{
     // 清理输出缓冲区
     if (ob_get_level()) {
         ob_clean();
     }
-    
+
     echo json_encode([
         'success' => false,
         'message' => $message
@@ -573,39 +603,40 @@ function respondWithError($message) {
  * 检查频率限制
  * @return bool 是否通过频率限制检查
  */
-function checkRateLimit() {
+function checkRateLimit()
+{
     if (!ENABLE_RATE_LIMIT) {
         return true;
     }
-    
+
     $ip = $_SERVER['REMOTE_ADDR'];
     $cacheFile = sys_get_temp_dir() . '/goofish_rate_limit_' . md5($ip);
-    
+
     $now = time();
     $requests = [];
-    
+
     // 读取现有请求记录
     if (file_exists($cacheFile)) {
         $data = file_get_contents($cacheFile);
         $requests = json_decode($data, true) ?: [];
     }
-    
+
     // 清理过期记录（超过1分钟）
-    $requests = array_filter($requests, function($timestamp) use ($now) {
+    $requests = array_filter($requests, function ($timestamp) use ($now) {
         return ($now - $timestamp) < 60;
     });
-    
+
     // 检查是否超过限制
     if (count($requests) >= RATE_LIMIT_REQUESTS) {
         return false;
     }
-    
+
     // 添加当前请求
     $requests[] = $now;
-    
+
     // 保存到缓存文件
     file_put_contents($cacheFile, json_encode($requests), LOCK_EX);
-    
+
     return true;
 }
 
@@ -614,9 +645,10 @@ function checkRateLimit() {
  * @param int $size 文件大小（字节）
  * @return string 格式化后的大小
  */
-function formatFileSize($size) {
+function formatFileSize($size)
+{
     $size = intval($size);
-    
+
     if ($size < 1024) {
         return $size . ' B';
     } elseif ($size < 1024 * 1024) {
@@ -632,21 +664,22 @@ function formatFileSize($size) {
  * 记录日志
  * @param string $message 日志消息
  */
-function logMessage($message) {
+function logMessage($message)
+{
     if (!ENABLE_LOGGING) {
         return;
     }
-    
+
     $logFile = LOG_FILE;
     $timestamp = date('Y-m-d H:i:s');
     $logEntry = "[{$timestamp}] {$message}" . PHP_EOL;
-    
+
     // 确保日志目录存在
     $logDir = dirname($logFile);
     if (!is_dir($logDir)) {
         mkdir($logDir, 0755, true);
     }
-    
+
     file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
 }
 
@@ -655,7 +688,8 @@ function logMessage($message) {
  * @param string $filePath 文件路径
  * @return string MD5哈希值
  */
-function getFileHash($filePath) {
+function getFileHash($filePath)
+{
     return md5_file($filePath);
 }
 
@@ -664,17 +698,18 @@ function getFileHash($filePath) {
  * @param string $fileHash 文件哈希值
  * @return array|false 如果找到缓存则返回结果，否则返回false
  */
-function getCachedResult($fileHash) {
+function getCachedResult($fileHash)
+{
     if (!ENABLE_CACHE) {
         return false;
     }
-    
+
     $cacheFile = CACHE_DIR . $fileHash . '.json';
-    
+
     if (file_exists($cacheFile)) {
         $data = file_get_contents($cacheFile);
         $result = json_decode($data, true);
-        
+
         if ($result && isset($result['timestamp'])) {
             // 检查缓存是否过期（24小时）
             if ((time() - $result['timestamp']) < 86400) {
@@ -685,7 +720,7 @@ function getCachedResult($fileHash) {
             }
         }
     }
-    
+
     return false;
 }
 
@@ -694,17 +729,18 @@ function getCachedResult($fileHash) {
  * @param string $fileHash 文件哈希值
  * @param array $result 上传结果
  */
-function saveCachedResult($fileHash, $result) {
+function saveCachedResult($fileHash, $result)
+{
     if (!ENABLE_CACHE) {
         return;
     }
-    
+
     $cacheFile = CACHE_DIR . $fileHash . '.json';
     $cacheData = [
         'timestamp' => time(),
         'data' => $result
     ];
-    
+
     file_put_contents($cacheFile, json_encode($cacheData), LOCK_EX);
 }
 
@@ -713,7 +749,8 @@ function saveCachedResult($fileHash, $result) {
  * @param string $originalName 原始文件名
  * @return string 新文件名
  */
-function generateNewFileName($originalName) {
+function generateNewFileName($originalName)
+{
     $extension = pathinfo($originalName, PATHINFO_EXTENSION);
     $timestamp = date('YmdHis');
     $random = substr(md5(uniqid()), 0, 6);
@@ -725,16 +762,17 @@ function generateNewFileName($originalName) {
  * @param array $data 上传数据
  * @param string $category 分类信息
  */
-function saveToGallery($data, $category = '未分类') {
+function saveToGallery($data, $category = '未分类')
+{
     $galleryFile = 'gallery.json';
     $gallery = [];
-    
+
     // 读取现有画廊数据
     if (file_exists($galleryFile)) {
         $content = file_get_contents($galleryFile);
         $gallery = json_decode($content, true) ?: [];
     }
-    
+
     // 添加新记录
     $record = [
         'id' => uniqid(),
@@ -744,17 +782,17 @@ function saveToGallery($data, $category = '未分类') {
         'uploadTime' => date('Y-m-d H:i:s'),
         'category' => $category
     ];
-    
+
     array_unshift($gallery, $record);
-    
+
     // 限制记录数量（最多保存1000条）
     if (count($gallery) > 1000) {
         $gallery = array_slice($gallery, 0, 1000);
     }
-    
+
     // 保存到文件
     $result = file_put_contents($galleryFile, json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
-    
+
     // 检查是否成功写入
     if ($result === false) {
         error_log("无法写入画廊文件: $galleryFile");
@@ -766,9 +804,10 @@ function saveToGallery($data, $category = '未分类') {
  * @param string $fileName 文件名
  * @return string 分类名称
  */
-function getCategoryByFileName($fileName) {
+function getCategoryByFileName($fileName)
+{
     $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-    
+
     switch ($extension) {
         case 'jpg':
         case 'jpeg':
@@ -792,7 +831,8 @@ function getCategoryByFileName($fileName) {
  * @param string $targetFormat 目标格式 (webp|avif)
  * @return array 转换结果
  */
-function convertImageFormat($file, $targetFormat) {
+function convertImageFormat($file, $targetFormat)
+{
     // 检查GD扩展
     if (!extension_loaded('gd')) {
         return [
@@ -800,7 +840,7 @@ function convertImageFormat($file, $targetFormat) {
             'message' => 'GD扩展未安装，无法进行格式转换'
         ];
     }
-    
+
     // 检查目标格式支持
     if ($targetFormat === 'webp' && !function_exists('imagewebp')) {
         return [
@@ -808,26 +848,26 @@ function convertImageFormat($file, $targetFormat) {
             'message' => '当前PHP版本不支持WebP格式转换'
         ];
     }
-    
+
     if ($targetFormat === 'avif' && !function_exists('imageavif')) {
         return [
             'success' => false,
             'message' => '当前PHP版本不支持AVIF格式转换'
         ];
     }
-    
+
     try {
         // 根据原始格式创建图像资源
         $sourceImage = null;
         $imageInfo = getimagesize($file['tmp_name']);
-        
+
         if (!$imageInfo) {
             return [
                 'success' => false,
                 'message' => '无法读取图片信息'
             ];
         }
-        
+
         switch ($imageInfo[2]) {
             case IMAGETYPE_JPEG:
                 $sourceImage = imagecreatefromjpeg($file['tmp_name']);
@@ -850,18 +890,18 @@ function convertImageFormat($file, $targetFormat) {
                     'message' => '不支持的图片格式'
                 ];
         }
-        
+
         if (!$sourceImage) {
             return [
                 'success' => false,
                 'message' => '无法创建图像资源'
             ];
         }
-        
+
         // 创建临时文件
         $tempFile = tempnam(sys_get_temp_dir(), 'converted_');
         $success = false;
-        
+
         // 转换格式
         switch ($targetFormat) {
             case 'webp':
@@ -875,10 +915,10 @@ function convertImageFormat($file, $targetFormat) {
                 $newMimeType = 'image/avif';
                 break;
         }
-        
+
         // 释放内存
         imagedestroy($sourceImage);
-        
+
         if (!$success) {
             if (file_exists($tempFile)) {
                 unlink($tempFile);
@@ -888,11 +928,11 @@ function convertImageFormat($file, $targetFormat) {
                 'message' => '格式转换失败'
             ];
         }
-        
+
         // 更新文件信息
         $pathInfo = pathinfo($file['name']);
         $newFileName = $pathInfo['filename'] . '.' . $newExtension;
-        
+
         return [
             'success' => true,
             'file' => [
@@ -902,7 +942,7 @@ function convertImageFormat($file, $targetFormat) {
                 'size' => filesize($tempFile)
             ]
         ];
-        
+
     } catch (Exception $e) {
         return [
             'success' => false,
@@ -917,7 +957,8 @@ function convertImageFormat($file, $targetFormat) {
  * @param int $maxSize 最大文件大小（字节）
  * @return array 压缩结果
  */
-function compressImage($file, $maxSize) {
+function compressImage($file, $maxSize)
+{
     // 检查GD扩展
     if (!extension_loaded('gd')) {
         return [
@@ -925,7 +966,7 @@ function compressImage($file, $maxSize) {
             'message' => 'GD扩展未安装，无法进行图片压缩'
         ];
     }
-    
+
     try {
         // 获取图片信息
         $imageInfo = getimagesize($file['tmp_name']);
@@ -935,7 +976,7 @@ function compressImage($file, $maxSize) {
                 'message' => '无法读取图片信息'
             ];
         }
-        
+
         // 创建图像资源
         $sourceImage = null;
         switch ($imageInfo[2]) {
@@ -960,18 +1001,18 @@ function compressImage($file, $maxSize) {
                     'message' => '不支持的图片格式，无法压缩'
                 ];
         }
-        
+
         if (!$sourceImage) {
             return [
                 'success' => false,
                 'message' => '无法创建图像资源'
             ];
         }
-        
+
         $originalSize = $file['size'];
         $width = imagesx($sourceImage);
         $height = imagesy($sourceImage);
-        
+
         // 如果文件已经小于等于目标大小，直接返回
         if ($originalSize <= $maxSize) {
             imagedestroy($sourceImage);
@@ -981,23 +1022,23 @@ function compressImage($file, $maxSize) {
                 'originalSize' => $originalSize
             ];
         }
-        
+
         // 压缩策略：先尝试降低质量，如果还是太大则缩小尺寸
         $quality = 85;
         $scaleFactor = 1.0;
         $attempts = 0;
         $maxAttempts = 10;
-        
+
         do {
             $attempts++;
-            
+
             // 计算新尺寸
-            $newWidth = (int)($width * $scaleFactor);
-            $newHeight = (int)($height * $scaleFactor);
-            
+            $newWidth = (int) ($width * $scaleFactor);
+            $newHeight = (int) ($height * $scaleFactor);
+
             // 创建新图像
             $compressedImage = imagecreatetruecolor($newWidth, $newHeight);
-            
+
             // 处理PNG透明度
             if ($imageInfo[2] === IMAGETYPE_PNG) {
                 imagealphablending($compressedImage, false);
@@ -1005,14 +1046,14 @@ function compressImage($file, $maxSize) {
                 $transparent = imagecolorallocatealpha($compressedImage, 255, 255, 255, 127);
                 imagefill($compressedImage, 0, 0, $transparent);
             }
-            
+
             // 缩放图像
             imagecopyresampled($compressedImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-            
+
             // 创建临时文件
             $tempFile = tempnam(sys_get_temp_dir(), 'compressed_');
             $success = false;
-            
+
             // 根据原始格式保存
             switch ($imageInfo[2]) {
                 case IMAGETYPE_JPEG:
@@ -1020,7 +1061,7 @@ function compressImage($file, $maxSize) {
                     break;
                 case IMAGETYPE_PNG:
                     // PNG压缩级别 0-9，9为最高压缩
-                    $pngQuality = (int)(9 - ($quality / 100) * 9);
+                    $pngQuality = (int) (9 - ($quality / 100) * 9);
                     $success = imagepng($compressedImage, $tempFile, $pngQuality);
                     break;
                 case IMAGETYPE_GIF:
@@ -1030,9 +1071,9 @@ function compressImage($file, $maxSize) {
                     $success = imagewebp($compressedImage, $tempFile, $quality);
                     break;
             }
-            
+
             imagedestroy($compressedImage);
-            
+
             if (!$success) {
                 if (file_exists($tempFile)) {
                     unlink($tempFile);
@@ -1043,9 +1084,9 @@ function compressImage($file, $maxSize) {
                     'message' => '图片压缩失败'
                 ];
             }
-            
+
             $compressedSize = filesize($tempFile);
-            
+
             // 如果压缩后大小满足要求，返回结果
             if ($compressedSize <= $maxSize) {
                 imagedestroy($sourceImage);
@@ -1060,10 +1101,10 @@ function compressImage($file, $maxSize) {
                     'originalSize' => $originalSize
                 ];
             }
-            
+
             // 删除临时文件，准备下一次尝试
             unlink($tempFile);
-            
+
             // 调整压缩参数
             if ($quality > 30) {
                 $quality -= 10; // 降低质量
@@ -1071,16 +1112,16 @@ function compressImage($file, $maxSize) {
                 $scaleFactor *= 0.9; // 缩小尺寸
                 $quality = 85; // 重置质量
             }
-            
+
         } while ($attempts < $maxAttempts && $scaleFactor > 0.3);
-        
+
         // 如果所有尝试都失败了，返回错误
         imagedestroy($sourceImage);
         return [
             'success' => false,
             'message' => '无法将图片压缩到指定大小，请尝试上传更小的图片'
         ];
-        
+
     } catch (Exception $e) {
         return [
             'success' => false,
